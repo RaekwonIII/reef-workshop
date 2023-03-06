@@ -3,6 +3,7 @@ import * as ss58 from "@subsquid/ss58"
 import {BatchContext, BatchProcessorItem, SubstrateBatchProcessor} from "@subsquid/substrate-processor"
 import {Store, TypeormDatabase} from "@subsquid/typeorm-store"
 import {In} from "typeorm"
+import { getContractEntity } from "./contract"
 import {Account, Transfer} from "./model"
 import {BalancesTransferEvent} from "./types/events"
 
@@ -65,7 +66,7 @@ processor.run(new TypeormDatabase(), async ctx => {
             fee
         }))
     }
-
+    await getContractEntity(ctx);
     await ctx.store.save(Array.from(accounts.values()))
     await ctx.store.insert(transfers)
 })
