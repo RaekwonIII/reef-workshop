@@ -9,11 +9,8 @@ import {BalancesTransferEvent} from "./types/events"
 
 const processor = new SubstrateBatchProcessor()
     .setDataSource({
-        // Lookup archive by the network name in the Subsquid registry
-        //archive: lookupArchive("kusama", {release: "FireSquid"})
-
-        // Use archive created by archive/docker-compose.yml
-        archive: lookupArchive('kusama', {release: 'FireSquid'} )
+        archive: lookupArchive('reef'),
+        chain: "wss://rpc.reefscan.info/ws"
     })
     .addEvent('Balances.Transfer', {
         data: {
@@ -29,7 +26,7 @@ const processor = new SubstrateBatchProcessor()
 
 
 type Item = BatchProcessorItem<typeof processor>
-type Ctx = BatchContext<Store, Item>
+export type Ctx = BatchContext<Store, Item>
 
 
 processor.run(new TypeormDatabase(), async ctx => {
@@ -51,7 +48,11 @@ processor.run(new TypeormDatabase(), async ctx => {
         let {id, blockNumber, timestamp, extrinsicHash, amount, fee} = t
 
         let from = getAccount(accounts, t.from)
+        if (from.balance == 0n) ctx.log.warn(`Account ${t.from} is going to have negative balance`);
+        from.balance -= t.amount
+        from.balance -= t.fee || 0n
         let to = getAccount(accounts, t.to)
+        to.balance -= t.amount
 
         transfers.push(new Transfer({
             id,
@@ -89,14 +90,9 @@ function getTransfers(ctx: Ctx): TransferEvent[] {
             if (item.name == "Balances.Transfer") {
                 let e = new BalancesTransferEvent(ctx, item.event)
                 let rec: {from: Uint8Array, to: Uint8Array, amount: bigint}
-                if (e.isV1020) {
-                    let [from, to, amount] = e.asV1020
+                if (e.isV5) {
+                    let [from, to, amount] = e.asV5
                     rec = { from, to, amount}
-                } else if (e.isV1050) {
-                    let [from, to, amount] = e.asV1050
-                    rec = { from, to, amount}
-                } else if (e.isV9130) {
-                    rec = e.asV9130
                 } else {
                     throw new Error('Unsupported spec')
                 }
@@ -106,8 +102,8 @@ function getTransfers(ctx: Ctx): TransferEvent[] {
                     blockNumber: block.header.height,
                     timestamp: new Date(block.header.timestamp),
                     extrinsicHash: item.event.extrinsic?.hash,
-                    from: ss58.codec('kusama').encode(rec.from),
-                    to: ss58.codec('kusama').encode(rec.to),
+                    from: ss58.codec('substrate').encode(rec.from),
+                    to: ss58.codec('substrate').encode(rec.to),
                     amount: rec.amount,
                     fee: item.event.extrinsic?.fee || 0n
                 })
@@ -121,7 +117,7 @@ function getTransfers(ctx: Ctx): TransferEvent[] {
 function getAccount(m: Map<string, Account>, id: string): Account {
     let acc = m.get(id)
     if (acc == null) {
-        acc = new Account()
+        acc = new Account({id: id, balance: 0n})
         acc.id = id
         m.set(id, acc)
     }
