@@ -8,5 +8,6 @@
   "calls": [ 
   ],
   "storage": [
+    "EvmAccounts.EvmAddresses"
   ]
 }

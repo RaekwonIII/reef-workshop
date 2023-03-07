@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@subsquid/archive-registry": "2.1.7",
+    "@subsquid/frontier": "^0.2.0",
     "@subsquid/graphql-server": "3.3.2",
     "@subsquid/ss58": "0.1.4",
     "@subsquid/substrate-processor": "2.4.1",

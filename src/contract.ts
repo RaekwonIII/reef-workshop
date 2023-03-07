@@ -10,6 +10,7 @@ export async function createContractEntity(ctx: Ctx): Promise<Contract> {
   const lastBlock = ctx.blocks[ctx.blocks.length -1].header
   const contractAPI = new ContractAPI({...ctx, block: lastBlock}, contractAddress);
   let name = "", symbol = "", totalSupply = BigNumber.from(0);
+  ctx.log.info("Creating new Contract model instance")
   try {
     name = await contractAPI.name();
     symbol = await contractAPI.symbol();
